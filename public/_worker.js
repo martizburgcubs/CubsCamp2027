@@ -114,6 +114,10 @@ async function supabaseRequest(env, query, method = "GET", body) {
   if (!response.ok) {
     const error = new Error("Supabase request failed");
     error.status = response.status;
+    try {
+      const details = await response.json();
+      if (typeof details.code === "string" && /^[A-Z0-9]{2,20}$/.test(details.code)) error.code = details.code;
+    } catch {}
     throw error;
   }
   return method === "GET" ? response.json() : null;
@@ -145,7 +149,22 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url), now = Date.now(), path = url.pathname;
     if (request.method === "GET" && path === "/court-hero.webp") return env.ASSETS.fetch(request);
-    if (request.method === "GET" && path === "/health") return new Response("Cubs camp registration build 4 — form origin fix", {headers:{"content-type":"text/plain; charset=utf-8"}});
+    if (request.method === "GET" && path === "/health") return new Response("Cubs camp registration build 5", {headers:{"content-type":"text/plain; charset=utf-8", "cache-control":"no-store"}});
+    if (request.method === "GET" && path === "/setup-check") {
+      const headers = {"content-type":"text/plain; charset=utf-8", "cache-control":"no-store"};
+      if (!env.SUPABASE_URL) return new Response("SUPABASE_URL is missing in Cloudflare Production variables.", {headers});
+      if (!env.SUPABASE_SECRET_KEY) return new Response("SUPABASE_SECRET_KEY is missing in Cloudflare Production secrets.", {headers});
+      let project;
+      try { project = new URL(env.SUPABASE_URL); } catch { return new Response("SUPABASE_URL is not a valid URL.", {headers}); }
+      if (project.protocol !== "https:" || project.pathname !== "/" || project.search) return new Response("SUPABASE_URL should be the project base URL, for example https://project.supabase.co (without /rest/v1).", {headers});
+      try {
+        await supabaseRequest(env, "?select=ref&limit=0");
+        return new Response("Supabase connection OK. The camp_registrations table is accessible. Submit a fresh test registration.", {headers});
+      } catch (error) {
+        const code = error.status ? `HTTP ${error.status}${error.code ? " / " + error.code : ""}` : "network error";
+        return new Response(`Supabase connection failed: ${code}. Check the secret key, project URL, and camp_registrations table.`, {headers});
+      }
+    }
     if (request.method === "GET" && path === "/") return html(registration(url, now).body);
     const origin = request.headers.get("origin");
     if (request.method === "POST" && path.startsWith("/admin") && origin && origin !== url.origin) return new Response("Forbidden", {status:403});
@@ -203,7 +222,8 @@ export default {
       await supabaseRequest(env, "", "POST", {ref, created: new Date(now).toISOString(), guardian, phone, player, division, days, fee, source, paid: 0});
     } catch (error) {
       if (error.status === 409) return problem("This player already has a registration with this WhatsApp number and division. Please contact Cubs to make changes.",409);
-      return problem("We couldn’t save your registration. Please try again.",503);
+      const code = error.status ? `HTTP ${error.status}${error.code ? " / " + error.code : ""}` : "settings or network";
+      return problem(`We couldn’t save your registration. Setup code: ${code}. Please contact Cubs.`,503);
     }
     const bankReference = player + " Jan Camp";
     const paymentMessage = `Maritzburg Cubs January Camp payment details\nPlayer: ${player}\nAmount: R${fee}${fee === 750 ? " (pay by 24 December 2026 for the Black Friday price)" : ""}\nAccount holder: Maritzburg Cubs\nBank: Nedbank\nAccount number: 1304310426\nAccount type: Current account\nBranch code: 198765\nEFT reference: ${bankReference}\nSend proof of payment to martizburgcubs@gmail.com\nRegistration reference: ${ref}`;
