@@ -1,0 +1,13 @@
+{
+  "name": "maritzburg-cubs-camp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply maritzburg-cubs-camp --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
