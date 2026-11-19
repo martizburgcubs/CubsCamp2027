@@ -145,9 +145,10 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url), now = Date.now(), path = url.pathname;
     if (request.method === "GET" && path === "/court-hero.webp") return env.ASSETS.fetch(request);
+    if (request.method === "GET" && path === "/health") return new Response("Cubs camp registration build 4 — form origin fix", {headers:{"content-type":"text/plain; charset=utf-8"}});
     if (request.method === "GET" && path === "/") return html(registration(url, now).body);
     const origin = request.headers.get("origin");
-    if (request.method === "POST" && origin && origin !== url.origin) return new Response("Forbidden", {status:403});
+    if (request.method === "POST" && path.startsWith("/admin") && origin && origin !== url.origin) return new Response("Forbidden", {status:403});
     if (path === "/admin/login" && request.method === "POST") {
       const secret = env.CUBS_ADMIN_PASSWORD;
       if (!secret) return new Response("Admin sign-in unavailable",{status:503});
