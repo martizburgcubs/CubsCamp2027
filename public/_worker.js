@@ -149,7 +149,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url), now = Date.now(), path = url.pathname;
     if (request.method === "GET" && path === "/court-hero.webp") return env.ASSETS.fetch(request);
-    if (request.method === "GET" && path === "/health") return new Response("Cubs camp registration build 5", {headers:{"content-type":"text/plain; charset=utf-8", "cache-control":"no-store"}});
+    if (request.method === "GET" && path === "/health") return new Response("Cubs camp registration build 6", {headers:{"content-type":"text/plain; charset=utf-8", "cache-control":"no-store"}});
     if (request.method === "GET" && path === "/setup-check") {
       const headers = {"content-type":"text/plain; charset=utf-8", "cache-control":"no-store"};
       if (!env.SUPABASE_URL) return new Response("SUPABASE_URL is missing in Cloudflare Production variables.", {headers});
@@ -166,8 +166,6 @@ export default {
       }
     }
     if (request.method === "GET" && path === "/") return html(registration(url, now).body);
-    const origin = request.headers.get("origin");
-    if (request.method === "POST" && path.startsWith("/admin") && origin && origin !== url.origin) return new Response("Forbidden", {status:403});
     if (path === "/admin/login" && request.method === "POST") {
       const secret = env.CUBS_ADMIN_PASSWORD;
       if (!secret) return new Response("Admin sign-in unavailable",{status:503});
